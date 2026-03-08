@@ -508,22 +508,21 @@ async function fetchData() {
 
 function processData(rows) {
   allData = rows.map(r => {
-    const d = parseDate(r.timestamp);
+    const d = parseDate(r["FECHA Y HORA"]);
     return {
-      time:    formatTime(r.timestamp),
+      time:    formatTime(r["FECHA Y HORA"]),
       dateObj: d,
-      V_v:     parseFloat(r.V_v)      || 0,
-      I_mA:    parseFloat(r.I_mA)     || 0,
-      P_mW:    parseFloat(r.P_mW)     || 0,
-      T_C:     parseFloat(r.T_C)      || 0,
-      rssi:    parseFloat(r.rssi_dBm) || 0,
-      ts:      r.timestamp,
+      V_v:     parseFloat(r["TENSIÓN (V)"])      || 0,
+      I_mA:    parseFloat(r["CORRIENTE (mA)"])   || 0,
+      P_mW:    parseFloat(r["POTENCIA (mW)"])    || 0,
+      T_C:     parseFloat(r["TEMPERATURA (°C)"]) || 0,
+      rssi:    parseFloat(r["SEÑAL WIFI"])        || 0,
+      ts:      r["FECHA Y HORA"],
     };
   });
 
   const last = allData[allData.length - 1];
 
-  // Valores actuales
   document.getElementById('valVoltage').textContent = last.V_v.toFixed(2);
   document.getElementById('valVoltage').classList.remove('loading');
   document.getElementById('valCurrent').textContent = last.I_mA.toFixed(1);
@@ -535,32 +534,24 @@ function processData(rows) {
 
   document.getElementById('lastUpdate').textContent = last.time;
 
-  // RSSI
   const rssi = last.rssi;
   document.getElementById('valRssi').textContent = rssi + ' dBm';
-  const dotWifi = document.getElementById('dotWifi');
-  dotWifi.className = 'status-indicator ' + (rssi > -70 ? 'ok' : rssi > -85 ? 'warn' : 'error');
+  document.getElementById('dotWifi').className = 'status-indicator ' + (rssi > -70 ? 'ok' : rssi > -85 ? 'warn' : 'error');
 
-  // Sensor
   const sensorOk = last.V_v > 0 || last.I_mA > 0;
-  document.getElementById('dotSensor').className    = 'status-indicator ' + (sensorOk ? 'ok' : 'warn');
+  document.getElementById('dotSensor').className     = 'status-indicator ' + (sensorOk ? 'ok' : 'warn');
   document.getElementById('statusSensor').textContent = sensorOk ? 'Activo' : 'Sin lectura';
 
-  // Dato reciente
-  const now     = new Date();
-  const lastTs  = last.dateObj || new Date(last.ts);
-  const diffSec = (now - lastTs) / 1000;
+  const diffSec = (new Date() - (last.dateObj || new Date(last.ts))) / 1000;
   const dotData = document.getElementById('dotData');
   if (!isNaN(diffSec) && diffSec < DATA_TIMEOUT) {
     dotData.className = 'status-indicator ok';
     document.getElementById('statusData').textContent = 'Reciente';
   } else {
     dotData.className = 'status-indicator warn';
-    const mins = isNaN(diffSec) ? '?' : Math.round(diffSec / 60);
-    document.getElementById('statusData').textContent = 'Antiguo (' + mins + ' min)';
+    document.getElementById('statusData').textContent = 'Antiguo (' + (isNaN(diffSec) ? '?' : Math.round(diffSec/60)) + ' min)';
   }
 
-  // Temperatura
   const cardTemp = document.getElementById('cardTemp');
   const dotTemp  = document.getElementById('dotTemp');
   if (last.T_C >= TEMP_ALARM) {
