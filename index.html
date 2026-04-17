@@ -617,15 +617,15 @@ function aplicarEstadoUI(cmd) {
     document.getElementById('ledRojo').classList.remove('off');
     document.getElementById('btnParo').classList.add('active');
     document.getElementById('btnInicio').classList.remove('active');
+    document.getElementById('btnHorario').classList.remove('active'); // Limpiamos el botón de horario
     document.getElementById('cmdDisplay').textContent = "SISTEMA DETENIDO ■";
     document.getElementById('cmdDisplay').style.color = "var(--red)";
   } else if (cmd.startsWith("PARO_HORARIO:")) {
-    const hora = cmd.split(":").slice(1).join(":");
+    const hora = cmd.split(":")[1] + ":" + cmd.split(":")[2];
     document.getElementById('btnHorario').classList.add('active');
-    // NO toca LEDs ni sistemaActivo — el sistema sigue en su estado actual
-    const estadoActual = sistemaActivo ? "ACTIVO ▶" : "DETENIDO ■";
-    document.getElementById('cmdDisplay').textContent = estadoActual + " · Paro programado " + hora;
-    document.getElementById('cmdDisplay').style.color = "var(--solar)";
+    // Actualizamos el texto sin cambiar el estado del LED verde/rojo
+    const estadoActual = sistemaActivo ? "SISTEMA ACTIVO ▶" : "SISTEMA EN ESPERA ⌛";
+    document.getElementById('cmdDisplay').innerHTML = `${estadoActual} <br> <small style="color:var(--solar)">⏱ Apagado programado: ${hora}</small>`;
   }
 }
 
@@ -662,27 +662,19 @@ function confirmarHorario() {
   if (!val) return;
 
   const [hh, mm] = val.split(':').map(Number);
-  const now      = new Date();
-  const target   = new Date();
+  const now = new Date();
+  const target = new Date();
   target.setHours(hh, mm, 0, 0);
 
+  // Si la hora ya pasó hoy (ej. son las 10pm y pones las 8am), se asume que es para mañana
   if (target <= now) {
-    document.getElementById('modalError').style.display = 'block';
-    return;
-  }
-
-  // Validar que el sistema esté activo para programar el paro
-  if (!sistemaActivo) {
-    document.getElementById('modalError').textContent = '⚠ Primero inicia el sistema antes de programar un paro.';
-    document.getElementById('modalError').style.display = 'block';
-    return;
+    target.setDate(target.getDate() + 1);
   }
 
   document.getElementById('modalError').style.display = 'none';
-  document.getElementById('modalError').textContent = '⚠ La hora debe ser posterior a la hora actual.';
   cerrarModal();
 
-  // Solo manda el comando, NO cambia LEDs ni sistemaActivo
+  // Enviamos solo el horario. El ESP32 lo guardará sin cambiar su estado de encendido.
   const cmd = "PARO_HORARIO:" + String(hh).padStart(2,'0') + ":" + String(mm).padStart(2,'0');
   enviarComando(cmd);
 }
